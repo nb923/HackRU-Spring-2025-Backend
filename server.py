@@ -62,6 +62,8 @@ async def detect_item(item_request: ItemRequest):
 
         shopping_log[shopping_id].append([True, item_name.capitalize(), item_data, None])
         return {"message": f"Item '{item_name.capitalize()}' added to the shopping log."}
+    elif item_name == "empty box":
+        return
     else:
         shopping_log[shopping_id].append([False, "Invalid item", None, None])
         return {"message": "Invalid item. Not found in the shopping database."}
