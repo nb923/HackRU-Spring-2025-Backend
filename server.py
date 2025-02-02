@@ -31,7 +31,9 @@ async def get_shopping_log(shopping_id: int):
     if shopping_id not in {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}:
         raise HTTPException(status_code=404, detail="Shopping ID not found")
     
-    return {"shopping_id": shopping_id, "log": get_shopping_log(shopping_id)}
+    log = get_shopping_log(shopping_id)
+    
+    return log
 
 class ItemRequest(BaseModel):
     item_name: str
@@ -54,7 +56,7 @@ async def detect_item(item_request: ItemRequest):
             "calories": item["calories"],
             "carbs": item["carbs"],
             "fat": item["fat"],
-            "protein:": item["protein"],
+            "protein": item["protein"],
             "price": item["price"]
         }
 
