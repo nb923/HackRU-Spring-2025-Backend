@@ -26,6 +26,11 @@ shopping_log = {
     ]
 }
 
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the FastAPI server!"}
+
+
 @app.get("/get-new-shopping-id/")
 async def get_new_shopping_id():
     new_shopping_id = random.randint(10000, 99999)
