@@ -6,7 +6,7 @@ from pydantic import BaseModel
 app = FastAPI()
 
 SHOPPING_DB = {
-    "apple": [1.0, 20, 15, 6, 0.3],
+    "Green Apple": [1.0, 20, 15, 6, 0.3],
     "banana": [0.5, 5, 35, 2, 0.2],
     "orange": [0.8, 7, 25, 19, 0.1],
     "milk": [2.5, 150, 8, 0, 8.0],
