@@ -1,53 +1,37 @@
 from fastapi import FastAPI, HTTPException
 import random
-
 from pydantic import BaseModel
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+
+# Load the environment variables from the .env file
+load_dotenv()
+
+# Get the MongoDB connection string from the environment variable
+connection_string = os.getenv('MONGODB_URL')
+
+client = MongoClient(connection_string)
+
+# Select the database (this will create the database if it doesn't exist)
+db = client['shopping_db']  # Name of your database
+
+# Select the shopping_logs collection
+logs_collection = db['shopping_logs']  # Collection for shopping logs
+nutrition_collection = db['product_nutrition']
 
 app = FastAPI()
-
-SHOPPING_DB = {
-    "green apple": [1.0, 20, 15, 6, 0.3],
-    "coca cola": [0.5, 5, 35, 2, 0.2],
-    "orange": [0.8, 7, 25, 19, 0.1],
-    "milk": [2.5, 150, 8, 0, 8.0],
-    "bread": [3.0, 80, 3, 45, 1.5]
-}
-
-shopping_log = {
-    12345: [
-        [True, "Laptop", [1.0, 20, 15, 6, 0.3], None],
-        [False, "Invalid item", None, None],
-        [False, "Checkout", None, True]
-    ],
-    12346: [
-        [True, "Phone", [1.0, 20, 15, 6, 0.3], None],
-        [False, "Invalid item", None, None],
-        [False, "Checkout", None, True]
-    ]
-}
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the FastAPI server!"}
 
-
-@app.get("/get-new-shopping-id/")
-async def get_new_shopping_id():
-    new_shopping_id = random.randint(10000, 99999)
-    
-    while new_shopping_id in shopping_log:
-        new_shopping_id = random.randint(10000, 99999)
-
-    shopping_log[new_shopping_id] = []
-    
-    return {"new_shopping_id": new_shopping_id}
-
 @app.get("/get-shopping-log/{shopping_id}")
 async def get_shopping_log(shopping_id: int):
-    if shopping_id not in shopping_log:
+    if shopping_id not in {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}:
         raise HTTPException(status_code=404, detail="Shopping ID not found")
     
-    return {"shopping_id": shopping_id, "log": shopping_log[shopping_id]}
+    return {"shopping_id": shopping_id, "log": get_shopping_log(shopping_id)}
 
 class ItemRequest(BaseModel):
     item_name: str
@@ -58,17 +42,63 @@ async def detect_item(item_request: ItemRequest):
     item_name = item_request.item_name.lower()
     shopping_id = item_request.shopping_id
 
-    if shopping_id not in shopping_log:
+    if shopping_id not in {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}:
         raise HTTPException(status_code=404, detail="Shopping ID not found")
+    
+    item = nutrition_collection.find_one({"product_name": {"$regex": item_name, "$options": 'i'}})
 
-    if item_name in SHOPPING_DB:
-        item_data = SHOPPING_DB[item_name]
-        item_price, calories, protein, carbs, fat = item_data
+    if item:
+        log_entry = {
+            "id": shopping_id,
+            "product_name": item["product_name"],
+            "calories": item["calories"],
+            "carbs": item["carbs"],
+            "fat": item["fat"],
+            "protein:": item["protein"],
+            "price": item["price"]
+        }
 
-        shopping_log[shopping_id].append([True, item_name.capitalize(), item_data, None])
+        logs_collection.update_one(
+            {"user_id": shopping_id},
+            {"$push": {"log": log_entry}}
+        )
+
         return {"message": f"Item '{item_name.capitalize()}' added to the shopping log."}
     else:
-        shopping_log[shopping_id].append([False, "Invalid item", None, None])
         return {"message": "Invalid item. Not found in the shopping database."}
+    
+# Checkout Request Body
+class CheckoutRequest(BaseModel):
+    shopping_id: int
+    
+@app.post("/checkout")
+async def checkout(request: CheckoutRequest):
+    shopping_id = request.shopping_id
+
+    if shopping_id not in {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}:
+        raise HTTPException(status_code=404, detail="Shopping ID not found")
+
+    # Find the user's shopping log
+    user_log = logs_collection.find_one({"user_id": shopping_id})
+
+    if not user_log:
+        raise HTTPException(status_code=404, detail="Shopping log not found")
+
+    # Clear the user's shopping log
+    logs_collection.update_one(
+        {"user_id": shopping_id},
+        {"$set": {"log": []}}  # Set the log to an empty list, effectively clearing it
+    )
+    
+    return {"message": f"Checkout successful, cart {shopping_id} is now empty."}
+    
+def get_shopping_log(user_id):
+    # Find the document for the given user_id
+    shopping_log_entry = logs_collection.find_one({"user_id": user_id})
+
+    if shopping_log_entry:
+        return shopping_log_entry['log']  # Return the log data
+    else:
+        return f"Shopping log for user_id {user_id} not found."
 
 
